@@ -1,6 +1,9 @@
 server:
   port: 8080
 
+payment:
+  url: ${PAYMENT_URL:http://localhost:8081}
+
 spring:
   application:
     name: fcfs-ticket
