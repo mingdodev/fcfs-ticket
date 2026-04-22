@@ -1,0 +1,18 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: fcfs-ticket
+  datasource:
+    url: jdbc:mysql://mysql:3306/fcfs_ticket
+    username: root
+    password: password
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+    properties:
+      hibernate:
+      dialect: org.hibernate.dialect.MySQLDialect

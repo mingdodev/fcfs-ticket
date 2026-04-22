@@ -1,0 +1,41 @@
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: fcfs-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: password
+      MYSQL_DATABASE: fcfs_ticket
+      MYSQL_ALLOW_EMPTY_PASSWORD: 'false'
+    ports:
+      - "3306:3306"
+    volumes:
+      - ./docker/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - fcfs-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: fcfs-app
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/fcfs_ticket
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: password
+      SPRING_JPA_HIBERNATE_DDL_AUTO: create-drop
+    ports:
+      - "8080:8080"
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - fcfs-network
+
+networks:
+  fcfs-network:
+    driver: bridge
