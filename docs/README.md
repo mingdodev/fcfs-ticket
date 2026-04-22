@@ -42,15 +42,15 @@
 
 → [버전별 상세 전략](06-optimization-strategy.md)
 
-## 빠른 시작
+## 서버 인프라 구성
 
 브랜치별로 동시성 제어 전략과 인프라 구성이 다르며,
 동일한 초기 데이터 기준으로 성능 차이를 반복 측정합니다.
 
 ```bash
-./run-branch.sh v1
-./run-branch.sh v2
+./deploy.sh v0
 ```
+버전 입력을 통해 현재 docker-compose.yml을 기반으로 도커 파일을 빌드하고 서버에 애플리케이션을 배포할 수 있습니다.
 
 ## 문서
 

@@ -19,9 +19,7 @@ services:
       retries: 5
 
   app:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    image: mingdodev/fcfs-ticket:${TAG:-v0}
     container_name: fcfs-app
     environment:
       SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/fcfs_ticket
