@@ -38,4 +38,5 @@
 | `Concert` | id, name, remainingTickets |
 | `Reservation` | id, concertId, userId, createdAt |
 
-> `Reservation` 레코드의 존재 자체가 예매 성공을 의미한다. 결제 실패 시 레코드를 저장하지 않으므로 별도 status 필드가 불필요하다.
+> 무통장 입금과 같이 대기가 필요한 결제 수단은 제공하지 않는다고 가정한다. 또한, 좌석 선택과 같은 세부 과정은 구현하지 않고, 정합성/가용성/동시성 사이 트레이드오프를 관찰하기 위한 최소 기능에 집중한다.
+> `Reservation` 레코드의 존재 자체가 예매 성공을 의미한다. 결제 실패 시 레코드를 저장하지 않으므로 별도 status 필드는 불필요하다.
