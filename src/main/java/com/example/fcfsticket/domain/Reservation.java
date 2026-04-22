@@ -27,4 +27,12 @@ public class Reservation {
 
     @Column(nullable = false)
     private LocalDateTime createdAt;
+
+    public static Reservation create(Long concertId, String userId) {
+        return Reservation.builder()
+                .concertId(concertId)
+                .userId(userId)
+                .createdAt(LocalDateTime.now())
+                .build();
+    }
 }

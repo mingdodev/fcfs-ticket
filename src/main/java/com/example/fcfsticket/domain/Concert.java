@@ -1,5 +1,6 @@
 package com.example.fcfsticket.domain;
 
+import com.example.fcfsticket.exception.SoldOutException;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -22,4 +23,9 @@ public class Concert {
 
     @Column(nullable = false)
     private Integer remainingTickets;
+
+    public void decreaseTicket() {
+        if (this.remainingTickets <= 0) throw new SoldOutException("잔여 티켓이 없습니다.");
+        this.remainingTickets--;
+    }
 }

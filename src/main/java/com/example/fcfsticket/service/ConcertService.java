@@ -18,6 +18,6 @@ public class ConcertService {
 
     public Concert getConcertById(Long id) {
         return concertRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Concert not found"));
+                .orElseThrow(() -> new IllegalArgumentException("해당 콘서트 정보를 찾을 수 없습니다."));
     }
 }
