@@ -1,5 +1,7 @@
 server:
   port: 8080
+  tomcat:
+    connection-timeout: 30s # 30초 (클라이언트 타임아웃인 15초보다 길게)
 
 payment:
   url: ${PAYMENT_URL:http://localhost:8081}
@@ -12,6 +14,8 @@ spring:
     username: root
     password: password
     driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      connection-timeout: 30000 # 30초
   jpa:
     hibernate:
       ddl-auto: validate
@@ -19,3 +23,13 @@ spring:
     properties:
       hibernate:
       dialect: org.hibernate.dialect.MySQLDialect
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  metrics:
+    export:
+      prometheus:
+        enabled: true
