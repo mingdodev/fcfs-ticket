@@ -29,7 +29,6 @@ public class ReservationService {
             throw e;
         }
 
-        reservationTxService.confirm(reservation.getId());
-        return reservation;
+        return reservationTxService.confirm(reservation.getId());
     }
 }

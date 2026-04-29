@@ -19,8 +19,8 @@ public class PaymentClient {
 
     public PaymentClient(@Value("${payment.url}") String paymentUrl) {
         HttpComponentsClientHttpRequestFactory factory = new HttpComponentsClientHttpRequestFactory();
-        factory.setConnectionRequestTimeout(Duration.ofSeconds(1));
-        factory.setReadTimeout(Duration.ofSeconds(3));
+        factory.setConnectionRequestTimeout(Duration.ofSeconds(5));
+        factory.setReadTimeout(Duration.ofSeconds(10));
 
         this.restClient = RestClient.builder()
                 .baseUrl(paymentUrl)
