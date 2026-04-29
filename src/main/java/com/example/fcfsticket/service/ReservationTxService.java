@@ -22,9 +22,10 @@ public class ReservationTxService {
 
     @Transactional
     public Reservation createPending(ReservationRequest request) {
-        Concert concert = concertRepository.findByIdForUpdate(request.getConcertId())
-                .orElseThrow(() -> new IllegalArgumentException("해당 콘서트 정보를 찾을 수 없습니다."));
-        concert.decreaseTicket();
+        int decreased = concertRepository.decreaseIfAvailable(request.getConcertId());
+        if (decreased == 0) {
+            throw new com.example.fcfsticket.exception.SoldOutException("잔여 티켓이 없습니다.");
+        }
         return reservationRepository.save(Reservation.create(request.getConcertId(), request.getUserId()));
     }
 
@@ -53,9 +54,7 @@ public class ReservationTxService {
         );
 
         if (updated > 0) {
-            concertRepository.findByIdForUpdate(concertId)
-                    .orElseThrow(() -> new IllegalArgumentException("콘서트를 찾을 수 없습니다."))
-                    .increaseTicket();
+            concertRepository.increaseTicket(concertId);
             return true;
         }
 

@@ -5,6 +5,12 @@ server:
 
 payment:
   url: ${PAYMENT_URL:http://localhost:8081}
+  client:
+    max-connections-per-route: ${PAYMENT_CLIENT_MAX_CONNECTIONS_PER_ROUTE:200}
+    max-connections-total: ${PAYMENT_CLIENT_MAX_CONNECTIONS_TOTAL:400}
+    connection-request-timeout: ${PAYMENT_CLIENT_CONNECTION_REQUEST_TIMEOUT:15s}
+    connect-timeout: ${PAYMENT_CLIENT_CONNECT_TIMEOUT:3s}
+    read-timeout: ${PAYMENT_CLIENT_READ_TIMEOUT:10s}
 
 spring:
   application:
@@ -26,9 +32,8 @@ spring:
 
 logging:
   level:
-    org.springframework.web: DEBUG
-    org.springframework.validation: DEBUG
-    com.example: DEBUG
+    root: WARN
+    com.example: WARN
 
 management:
   endpoints:
