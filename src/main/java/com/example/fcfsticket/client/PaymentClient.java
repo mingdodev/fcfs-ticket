@@ -8,6 +8,7 @@ import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestClient;
+import org.springframework.web.client.RestClientResponseException;
 import java.time.Duration;
 
 @Slf4j
@@ -41,6 +42,9 @@ public class PaymentClient {
                 throw new PaymentFailedException();
             }
             log.info("payment success: concertId={}, userId={}", concertId, userId);
+        } catch (RestClientResponseException e) {
+            log.error("payment server error: concertId={}, userId={}, status={}, body={}", concertId, userId, e.getStatusCode(), e.getResponseBodyAsString());
+            throw new PaymentFailedException();
         } catch (ResourceAccessException e) {
             log.error("payment unavailable: concertId={}, userId={}, error={}", concertId, userId, e.getMessage());
             throw new PaymentUnavailableException();
