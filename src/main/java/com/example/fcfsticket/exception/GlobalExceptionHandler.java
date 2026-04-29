@@ -79,7 +79,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleException(Exception e) {
-        log.error("500 - {}: {}", e.getClass().getSimpleName(), e.getMessage());
+        log.error("500 - {}: {}", e.getClass().getSimpleName(), e.getMessage(), e);
         ErrorResponse errorResponse = ErrorResponse.builder()
                 .error("INTERNAL_SERVER_ERROR")
                 .message("서버 내부 오류가 발생했습니다.")

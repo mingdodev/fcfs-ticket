@@ -2,14 +2,21 @@ package com.example.fcfsticket.client;
 
 import com.example.fcfsticket.exception.PaymentFailedException;
 import com.example.fcfsticket.exception.PaymentUnavailableException;
+import java.time.Duration;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.hc.client5.http.config.ConnectionConfig;
+import org.apache.hc.client5.http.config.RequestConfig;
+import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
+import org.apache.hc.client5.http.impl.classic.HttpClients;
+import org.apache.hc.client5.http.impl.io.PoolingHttpClientConnectionManager;
+import org.apache.hc.client5.http.impl.io.PoolingHttpClientConnectionManagerBuilder;
+import org.apache.hc.core5.util.Timeout;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientResponseException;
-import java.time.Duration;
 
 @Slf4j
 @Component
@@ -17,10 +24,37 @@ public class PaymentClient {
 
     private final RestClient restClient;
 
-    public PaymentClient(@Value("${payment.url}") String paymentUrl) {
-        HttpComponentsClientHttpRequestFactory factory = new HttpComponentsClientHttpRequestFactory();
-        factory.setConnectionRequestTimeout(Duration.ofSeconds(5));
-        factory.setReadTimeout(Duration.ofSeconds(10));
+    public PaymentClient(
+            @Value("${payment.url}") String paymentUrl,
+            @Value("${payment.client.max-connections-per-route:200}") int maxConnectionsPerRoute,
+            @Value("${payment.client.max-connections-total:400}") int maxConnectionsTotal,
+            @Value("${payment.client.connection-request-timeout:PT15S}") Duration connectionRequestTimeout,
+            @Value("${payment.client.connect-timeout:PT3S}") Duration connectTimeout,
+            @Value("${payment.client.read-timeout:PT10S}") Duration readTimeout
+    ) {
+        PoolingHttpClientConnectionManager connectionManager =
+                PoolingHttpClientConnectionManagerBuilder.create()
+                        .setDefaultConnectionConfig(ConnectionConfig.custom()
+                                .setConnectTimeout(Timeout.of(connectTimeout))
+                                .setSocketTimeout(Timeout.of(readTimeout))
+                                .build())
+                        .setMaxConnPerRoute(maxConnectionsPerRoute)
+                        .setMaxConnTotal(maxConnectionsTotal)
+                        .build();
+
+        RequestConfig requestConfig = RequestConfig.custom()
+                .setConnectionRequestTimeout(Timeout.of(connectionRequestTimeout))
+                .build();
+
+        CloseableHttpClient httpClient = HttpClients.custom()
+                .setConnectionManager(connectionManager)
+                .setDefaultRequestConfig(requestConfig)
+                .evictExpiredConnections()
+                .build();
+
+        HttpComponentsClientHttpRequestFactory factory = new HttpComponentsClientHttpRequestFactory(httpClient);
+        factory.setConnectionRequestTimeout(connectionRequestTimeout);
+        factory.setReadTimeout(readTimeout);
 
         this.restClient = RestClient.builder()
                 .baseUrl(paymentUrl)
@@ -37,12 +71,22 @@ public class PaymentClient {
                     .body(PaymentResponse.class);
 
             if (response == null || "FAIL".equals(response.status())) {
+                log.warn("Payment rejected: concertId={}, userId={}, payloadStatus={}",
+                        concertId, userId, response == null ? "null" : response.status());
                 throw new PaymentFailedException();
             }
         } catch (RestClientResponseException e) {
-            log.warn("Payment server error: status={}", e.getStatusCode());
+            log.warn("Payment server error: concertId={}, userId={}, status={}, body={}",
+                    concertId, userId, e.getStatusCode(), e.getResponseBodyAsString());
             throw new PaymentFailedException();
         } catch (ResourceAccessException e) {
+            Throwable cause = e.getCause();
+            log.warn("Payment request unavailable: concertId={}, userId={}, message={}, causeType={}, causeMessage={}",
+                    concertId,
+                    userId,
+                    e.getMessage(),
+                    cause == null ? "none" : cause.getClass().getSimpleName(),
+                    cause == null ? "none" : cause.getMessage());
             throw new PaymentUnavailableException();
         }
     }
