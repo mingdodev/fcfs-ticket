@@ -1,4 +1,17 @@
 services:
+  redis:
+    image: redis:7-alpine
+    container_name: fcfs-redis
+    ports:
+      - "6379:6379"
+    networks:
+      - fcfs-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   mysql:
     image: mysql:8.0
     container_name: fcfs-mysql
@@ -25,12 +38,16 @@ services:
       SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/fcfs_ticket
       SPRING_DATASOURCE_USERNAME: root
       SPRING_DATASOURCE_PASSWORD: password
-      SPRING_JPA_HIBERNATE_DDL_AUTO: create-drop
-      PAYMENT_URL: http://localhost:8081 # 실제 인프라 환경에서는 사설 ip 주입 필요
+      SPRING_JPA_HIBERNATE_DDL_AUTO: validate
+      PAYMENT_URL: http://10.0.2.6:8081 # 실제 인프라 환경에서는 사설 ip 주입 필요
+      SPRING_REDIS_HOST: redis
+      SPRING_REDIS_PORT: 6379
     ports:
       - "8080:8080"
     depends_on:
       mysql:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     networks:
       - fcfs-network

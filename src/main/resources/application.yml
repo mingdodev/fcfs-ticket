@@ -15,6 +15,10 @@ payment:
 spring:
   application:
     name: fcfs-ticket
+  data:
+    redis:
+      host: ${SPRING_REDIS_HOST:localhost}
+      port: ${SPRING_REDIS_PORT:6379}
   datasource:
     url: jdbc:mysql://localhost:3306/fcfs_ticket
     username: ticket
@@ -30,6 +34,10 @@ spring:
     properties:
       hibernate:
       dialect: org.hibernate.dialect.MySQLDialect
+
+ticket:
+  inventory:
+    ttl-seconds: 259200  # 3일
 
 logging:
   level:
