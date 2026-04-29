@@ -37,7 +37,6 @@ class ReservationTxServiceTest {
     @Test
     void 티켓이_있으면_pending_예약을_생성한다() {
         ReservationRequest request = new ReservationRequest(1L, "user123");
-        Concert concert = Concert.builder().id(1L).name("콘서트 A").remainingTickets(10).build();
         Reservation savedReservation = Reservation.builder()
                 .id(10L)
                 .concertId(1L)
@@ -45,13 +44,12 @@ class ReservationTxServiceTest {
                 .status(ReservationStatus.PENDING)
                 .build();
 
-        given(concertRepository.findByIdForUpdate(1L)).willReturn(Optional.of(concert));
         given(reservationRepository.save(any(Reservation.class))).willReturn(savedReservation);
 
         Reservation result = reservationTxService.createPending(request);
 
         assertThat(result.getId()).isEqualTo(10L);
-        assertThat(concert.getRemainingTickets()).isEqualTo(9);
+        assertThat(result.getStatus()).isEqualTo(ReservationStatus.PENDING);
         verify(reservationRepository).save(any(Reservation.class));
     }
 
@@ -84,15 +82,13 @@ class ReservationTxServiceTest {
 
     @Test
     void cancel은_pending일때만_취소하고_티켓을_복구한다() {
-        Concert concert = Concert.builder().id(1L).name("콘서트 A").remainingTickets(9).build();
         given(reservationRepository.updateStatusIfEquals(10L, ReservationStatus.PENDING, ReservationStatus.CANCELED))
                 .willReturn(1);
-        given(concertRepository.findByIdForUpdate(1L)).willReturn(Optional.of(concert));
 
         boolean canceled = reservationTxService.cancel(10L, 1L);
 
         assertThat(canceled).isTrue();
-        assertThat(concert.getRemainingTickets()).isEqualTo(10);
+        verify(concertRepository).increaseTicket(1L);
     }
 
     @Test
