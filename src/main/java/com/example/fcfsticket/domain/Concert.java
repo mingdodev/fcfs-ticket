@@ -28,4 +28,8 @@ public class Concert {
         if (this.remainingTickets <= 0) throw new SoldOutException("잔여 티켓이 없습니다.");
         this.remainingTickets--;
     }
+
+    public void increaseTicket() {
+        this.remainingTickets++;
+    }
 }

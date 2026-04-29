@@ -1,6 +1,7 @@
 package com.example.fcfsticket.dto;
 
 import com.example.fcfsticket.domain.Reservation;
+import com.example.fcfsticket.domain.ReservationStatus;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -17,6 +18,7 @@ public class ReservationResponse {
     private Long concertId;
     private String userId;
     private LocalDateTime createdAt;
+    private ReservationStatus status;
 
     public static ReservationResponse from(Reservation reservation) {
         return ReservationResponse.builder()
@@ -24,6 +26,7 @@ public class ReservationResponse {
                 .concertId(reservation.getConcertId())
                 .userId(reservation.getUserId())
                 .createdAt(reservation.getCreatedAt())
+                .status(reservation.getStatus())
                 .build();
     }
 }

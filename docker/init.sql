@@ -9,6 +9,8 @@ CREATE TABLE IF NOT EXISTS reservations (
   concert_id BIGINT NOT NULL,
   user_id VARCHAR(255) NOT NULL,
   created_at DATETIME NOT NULL,
+  status VARCHAR(20) NOT NULL DEFAULT 'PENDING',
+  expires_at DATETIME NOT NULL,
   FOREIGN KEY (concert_id) REFERENCES concerts(id)
 );
 
