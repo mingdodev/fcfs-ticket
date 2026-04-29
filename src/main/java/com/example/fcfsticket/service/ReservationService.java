@@ -8,8 +8,10 @@ import com.example.fcfsticket.repository.ConcertRepository;
 import com.example.fcfsticket.repository.ReservationRepository;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class ReservationService {
@@ -22,6 +24,8 @@ public class ReservationService {
         final long concertId = request.getConcertId();
         final String userId = request.getUserId();
 
+        log.info("reserve start: concertId={}, userId={}", concertId, userId);
+
         Concert concert = concertRepository.findByIdForUpdate(concertId)
                 .orElseThrow(() -> new IllegalArgumentException("해당 콘서트 정보를 찾을 수 없습니다."));
 
@@ -29,6 +33,8 @@ public class ReservationService {
 
         paymentClient.requestPayment(concertId, userId);
 
-        return reservationRepository.save(Reservation.create(concertId, userId));
+        Reservation reservation = reservationRepository.save(Reservation.create(concertId, userId));
+        log.info("reserve success: reservationId={}, concertId={}, userId={}", reservation.getId(), concertId, userId);
+        return reservation;
     }
 }

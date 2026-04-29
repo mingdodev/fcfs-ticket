@@ -1,6 +1,7 @@
 package com.example.fcfsticket.exception;
 
 import com.example.fcfsticket.dto.ErrorResponse;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -8,11 +9,13 @@ import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
+@Slf4j
 @ControllerAdvice
 public class GlobalExceptionHandler {
 
     @ExceptionHandler(SoldOutException.class)
     public ResponseEntity<ErrorResponse> handleSoldOutException(SoldOutException e) {
+        log.warn("SoldOut: {}", e.getMessage());
         ErrorResponse errorResponse = ErrorResponse.builder()
                 .error("SOLD_OUT")
                 .message(e.getMessage())
@@ -22,6 +25,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(PaymentFailedException.class)
     public ResponseEntity<ErrorResponse> handlePaymentFailedException(PaymentFailedException e) {
+        log.warn("PaymentFailed: {}", e.getMessage());
         ErrorResponse errorResponse = ErrorResponse.builder()
                 .error("PAYMENT_FAILED")
                 .message(e.getMessage())
@@ -31,6 +35,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(PaymentUnavailableException.class)
     public ResponseEntity<ErrorResponse> handlePaymentUnavailableException(PaymentUnavailableException e) {
+        log.warn("PaymentUnavailable: {}", e.getMessage());
         ErrorResponse errorResponse = ErrorResponse.builder()
                 .error("PAYMENT_UNAVAILABLE")
                 .message(e.getMessage())
@@ -40,6 +45,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(InvalidRequestException.class)
     public ResponseEntity<ErrorResponse> handleInvalidRequestException(InvalidRequestException e) {
+        log.warn("InvalidRequest: {}", e.getMessage());
         ErrorResponse errorResponse = ErrorResponse.builder()
                 .error("INVALID_REQUEST")
                 .message(e.getMessage())
@@ -49,6 +55,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ErrorResponse> handleMethodArgumentNotValidException(MethodArgumentNotValidException e) {
+        log.warn("ValidationFailed: {}", e.getMessage());
         ErrorResponse errorResponse = ErrorResponse.builder()
                 .error("INVALID_REQUEST")
                 .message("필드 누락 또는 타입 오류가 있습니다.")
@@ -58,6 +65,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
     public ResponseEntity<ErrorResponse> handleMethodArgumentTypeMismatchException(MethodArgumentTypeMismatchException e) {
+        log.warn("TypeMismatch: {}", e.getMessage());
         ErrorResponse errorResponse = ErrorResponse.builder()
                 .error("INVALID_REQUEST")
                 .message("필드 타입이 올바르지 않습니다.")
@@ -67,6 +75,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleException(Exception e) {
+        log.error("Unhandled exception: {}", e.getMessage(), e);
         ErrorResponse errorResponse = ErrorResponse.builder()
                 .error("INTERNAL_SERVER_ERROR")
                 .message("서버 내부 오류가 발생했습니다.")
