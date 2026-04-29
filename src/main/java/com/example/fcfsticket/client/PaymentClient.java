@@ -29,7 +29,6 @@ public class PaymentClient {
     }
 
     public void requestPayment(Long concertId, String userId) {
-        log.info("payment request: concertId={}, userId={}", concertId, userId);
         try {
             PaymentResponse response = restClient.post()
                     .uri("/pay")
@@ -38,15 +37,12 @@ public class PaymentClient {
                     .body(PaymentResponse.class);
 
             if (response == null || "FAIL".equals(response.status())) {
-                log.warn("payment failed: concertId={}, userId={}, status={}", concertId, userId, response == null ? "null" : response.status());
                 throw new PaymentFailedException();
             }
-            log.info("payment success: concertId={}, userId={}", concertId, userId);
         } catch (RestClientResponseException e) {
-            log.error("payment server error: concertId={}, userId={}, status={}, body={}", concertId, userId, e.getStatusCode(), e.getResponseBodyAsString());
+            log.warn("Payment server error: status={}", e.getStatusCode());
             throw new PaymentFailedException();
         } catch (ResourceAccessException e) {
-            log.error("payment unavailable: concertId={}, userId={}, error={}", concertId, userId, e.getMessage());
             throw new PaymentUnavailableException();
         }
     }

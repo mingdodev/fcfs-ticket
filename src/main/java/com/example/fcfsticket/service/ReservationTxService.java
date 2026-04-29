@@ -38,7 +38,7 @@ public class ReservationTxService {
         reservationRepository.findById(reservationId)
                 .orElseThrow(() -> new IllegalArgumentException("예약을 찾을 수 없습니다."))
                 .cancel();
-        concertRepository.findById(concertId)
+        concertRepository.findByIdForUpdate(concertId)
                 .orElseThrow(() -> new IllegalArgumentException("콘서트를 찾을 수 없습니다."))
                 .increaseTicket();
     }

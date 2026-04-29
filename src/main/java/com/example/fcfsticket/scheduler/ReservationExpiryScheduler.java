@@ -34,6 +34,5 @@ public class ReservationExpiryScheduler {
             concertRepository.findById(reservation.getConcertId())
                     .ifPresent(concert -> concert.increaseTicket());
         }
-        log.info("expired {} pending reservations", expired.size());
     }
 }

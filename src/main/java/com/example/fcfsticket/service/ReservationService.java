@@ -16,8 +16,6 @@ public class ReservationService {
     private final PaymentClient paymentClient;
 
     public Reservation reserve(ReservationRequest request) {
-        log.info("reserve start: concertId={}, userId={}", request.getConcertId(), request.getUserId());
-
         Reservation reservation = reservationTxService.createPending(request);
 
         try {
@@ -26,13 +24,12 @@ public class ReservationService {
             try {
                 reservationTxService.cancel(reservation.getId(), reservation.getConcertId());
             } catch (Exception compensationEx) {
-                log.error("compensation failed: reservationId={}", reservation.getId(), compensationEx);
+                log.error("compensation failed: reservationId={}, reason={}", reservation.getId(), compensationEx.getMessage());
             }
             throw e;
         }
 
         reservationTxService.confirm(reservation.getId());
-        log.info("reserve success: reservationId={}, concertId={}, userId={}", reservation.getId(), request.getConcertId(), request.getUserId());
         return reservation;
     }
 }
