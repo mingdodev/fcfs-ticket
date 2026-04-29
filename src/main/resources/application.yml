@@ -22,6 +22,7 @@ spring:
     driver-class-name: com.mysql.cj.jdbc.Driver
     hikari:
       connection-timeout: 30000 # 30초
+      maximum-pool-size: 30
   jpa:
     hibernate:
       ddl-auto: create-drop
