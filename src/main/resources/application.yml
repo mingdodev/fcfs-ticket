@@ -38,6 +38,8 @@ spring:
 ticket:
   inventory:
     ttl-seconds: 259200  # 3일
+  compensation:
+    retry-interval-ms: 60000  # 1분
 
 logging:
   level:

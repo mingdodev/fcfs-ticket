@@ -1,12 +1,14 @@
 package com.example.fcfsticket.service;
 
-import com.example.fcfsticket.repository.ConcertRepository;
-import jakarta.transaction.Transactional;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
+import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.script.RedisScript;
 import org.springframework.stereotype.Service;
 
 @Slf4j
@@ -15,10 +17,19 @@ import org.springframework.stereotype.Service;
 public class TicketInventoryService {
 
     private final RedisTemplate<String, String> redisTemplate;
-    private final ConcertRepository concertRepository;
 
     @Value("${ticket.inventory.ttl-seconds:259200}")
     private long ttlSeconds;
+
+    private RedisScript<Long> reserveScript;
+
+    @PostConstruct
+    public void initScript() {
+        this.reserveScript = RedisScript.of(
+            new ClassPathResource("lua/reserve.lua"),
+            Long.class
+        );
+    }
 
     private String getInventoryKey(Long concertId) {
         return "ticket:inventory:" + concertId;
@@ -34,21 +45,38 @@ public class TicketInventoryService {
         log.info("Initialize inventory: concertId={}, tickets={}, ttl={}s", concertId, initialTickets, ttlSeconds);
     }
 
-    /**
-     * 선착순 선점: 원자적 감소
-     * @return 성공 시 true (remaining >= 0), 실패 시 false (sold out)
-     */
-    public boolean reserveIfAvailable(Long concertId) {
-        String key = getInventoryKey(concertId);
-        Long remaining = redisTemplate.opsForValue().decrement(key);
+    public static class ReservationResult {
+        public static final long SUCCESS = 1L;
+        public static final long SOLD_OUT = 0L;
+        public static final long DUPLICATE = -1L;
+    }
 
-        if (remaining == null) {
-            // 첫 요청이고 Redis에 없는 경우 (캐시 워밍 실패)
-            log.warn("Inventory not found in Redis: concertId={}", concertId);
-            return false;
+    /**
+     * 선착순 선점: Lua 스크립트로 원자적 처리
+     * @return 1 (성공), 0 (매진), -1 (중복)
+     */
+    public long reserveIfAvailable(Long concertId, String userId) {
+        String inventoryKey = getInventoryKey(concertId);
+        String usersKey = "ticket:users:" + concertId;
+
+        Long result = redisTemplate.execute(
+            reserveScript,
+            List.of(inventoryKey, usersKey),
+            userId
+        );
+
+        if (result == null) {
+            log.warn("Lua script returned null: concertId={}", concertId);
+            return ReservationResult.SOLD_OUT;
         }
 
-        return remaining >= 0;
+        if (result == ReservationResult.DUPLICATE) {
+            log.info("Duplicate reservation attempt: concertId={}, userId={}", concertId, userId);
+        } else if (result == ReservationResult.SOLD_OUT) {
+            log.warn("Sold out: concertId={}", concertId);
+        }
+
+        return result;
     }
 
     /**
@@ -68,20 +96,4 @@ public class TicketInventoryService {
         return value == null ? null : Long.parseLong(value);
     }
 
-    /**
-     * Redis → DB 동기화
-     */
-    @Transactional
-    public void syncToDatabase(Long concertId) {
-        Long currentInventory = getCurrentInventory(concertId);
-        if (currentInventory == null) {
-            log.warn("No inventory found in Redis for concertId={}", concertId);
-            return;
-        }
-
-        concertRepository.findById(concertId).ifPresent(concert -> {
-            concert.setRemainingTickets(currentInventory.intValue());
-        });
-        log.info("Synced to database: concertId={}, remaining={}", concertId, currentInventory);
-    }
 }

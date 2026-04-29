@@ -6,6 +6,8 @@ import com.example.fcfsticket.domain.ReservationStatus;
 import com.example.fcfsticket.dto.ReservationRequest;
 import com.example.fcfsticket.exception.PaymentFailedException;
 import com.example.fcfsticket.exception.PaymentUnavailableException;
+import com.example.fcfsticket.exception.SoldOutException;
+import com.example.fcfsticket.repository.ReservationCompensationStateRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -23,10 +25,16 @@ import static org.mockito.Mockito.verify;
 class ReservationServiceTest {
 
     @Mock
+    TicketInventoryService ticketInventoryService;
+
+    @Mock
     ReservationTxService reservationTxService;
 
     @Mock
     PaymentClient paymentClient;
+
+    @Mock
+    ReservationCompensationStateRepository compensationStateRepository;
 
     @InjectMocks
     ReservationService reservationService;
@@ -47,6 +55,8 @@ class ReservationServiceTest {
                 .status(ReservationStatus.CONFIRMED)
                 .build();
 
+        given(ticketInventoryService.reserveIfAvailable(1L, "user123"))
+                .willReturn(TicketInventoryService.ReservationResult.SUCCESS);
         given(reservationTxService.createPending(request)).willReturn(pendingReservation);
         given(reservationTxService.confirm(10L)).willReturn(confirmedReservation);
 
@@ -66,12 +76,16 @@ class ReservationServiceTest {
                 .userId("user123")
                 .status(ReservationStatus.PENDING)
                 .build();
+
+        given(ticketInventoryService.reserveIfAvailable(1L, "user123"))
+                .willReturn(TicketInventoryService.ReservationResult.SUCCESS);
         given(reservationTxService.createPending(request)).willReturn(pendingReservation);
         willThrow(new PaymentFailedException()).given(paymentClient).requestPayment(1L, "user123");
 
         assertThatThrownBy(() -> reservationService.reserve(request))
                 .isInstanceOf(PaymentFailedException.class);
 
+        verify(ticketInventoryService).restoreTicket(1L);
         verify(reservationTxService).cancel(10L, 1L);
         verify(reservationTxService, never()).confirm(10L);
     }
@@ -85,13 +99,47 @@ class ReservationServiceTest {
                 .userId("user123")
                 .status(ReservationStatus.PENDING)
                 .build();
+
+        given(ticketInventoryService.reserveIfAvailable(1L, "user123"))
+                .willReturn(TicketInventoryService.ReservationResult.SUCCESS);
         given(reservationTxService.createPending(request)).willReturn(pendingReservation);
         willThrow(new PaymentUnavailableException()).given(paymentClient).requestPayment(1L, "user123");
 
         assertThatThrownBy(() -> reservationService.reserve(request))
                 .isInstanceOf(PaymentUnavailableException.class);
 
+        verify(ticketInventoryService).restoreTicket(1L);
         verify(reservationTxService).cancel(10L, 1L);
         verify(reservationTxService, never()).confirm(10L);
+    }
+
+    @Test
+    void 매진된_티켓은_예약할_수_없다() {
+        ReservationRequest request = new ReservationRequest(1L, "user123");
+
+        given(ticketInventoryService.reserveIfAvailable(1L, "user123"))
+                .willReturn(TicketInventoryService.ReservationResult.SOLD_OUT);
+
+        assertThatThrownBy(() -> reservationService.reserve(request))
+                .isInstanceOf(SoldOutException.class)
+                .hasMessage("잔여 티켓이 없습니다.");
+
+        verify(reservationTxService, never()).createPending(request);
+        verify(compensationStateRepository, never()).save(org.mockito.ArgumentMatchers.any());
+    }
+
+    @Test
+    void 중복_예약은_할_수_없다() {
+        ReservationRequest request = new ReservationRequest(1L, "user123");
+
+        given(ticketInventoryService.reserveIfAvailable(1L, "user123"))
+                .willReturn(TicketInventoryService.ReservationResult.DUPLICATE);
+
+        assertThatThrownBy(() -> reservationService.reserve(request))
+                .isInstanceOf(SoldOutException.class)
+                .hasMessage("이미 예약한 티켓입니다.");
+
+        verify(reservationTxService, never()).createPending(request);
+        verify(compensationStateRepository, never()).save(org.mockito.ArgumentMatchers.any());
     }
 }
