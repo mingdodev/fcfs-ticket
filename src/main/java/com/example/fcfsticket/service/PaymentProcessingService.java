@@ -65,6 +65,10 @@ public class PaymentProcessingService {
     }
 
     private void handlePaymentFailure(Long reservationId, ReservationRequest request) {
+        handlePaymentFailure(reservationId, request, "PAYMENT_FAILED");
+    }
+
+    private void handlePaymentFailure(Long reservationId, ReservationRequest request, String failureReason) {
         // 보상 상태 저장 (CompensationRetryService가 주기적으로 처리)
         ReservationCompensationState compensationState = ReservationCompensationState.builder()
             .reservationId(reservationId)
@@ -72,9 +76,10 @@ public class PaymentProcessingService {
             .status(ReservationCompensationState.CompensationStatus.PENDING)
             .retryCount(0)
             .createdAt(System.currentTimeMillis())
+            .failureReason(failureReason)
             .build();
 
         compensationStateRepository.save(compensationState);
-        log.info("Compensation scheduled: reservationId={}", reservationId);
+        log.info("Compensation scheduled: reservationId={}, reason={}", reservationId, failureReason);
     }
 }

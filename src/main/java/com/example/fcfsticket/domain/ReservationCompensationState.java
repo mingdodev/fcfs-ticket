@@ -33,6 +33,9 @@ public class ReservationCompensationState {
     @Column(nullable = false)
     private long createdAt;
 
+    @Column
+    private String failureReason;  // 실패 원인 (PAYMENT_FAILED, PAYMENT_UNAVAILABLE 등)
+
     public enum CompensationStatus {
         PENDING,      // Waiting to be compensated
         REDIS_SUCCESS, // Redis restored successfully

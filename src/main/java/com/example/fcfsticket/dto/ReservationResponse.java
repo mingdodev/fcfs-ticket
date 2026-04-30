@@ -19,6 +19,7 @@ public class ReservationResponse {
     private String userId;
     private LocalDateTime createdAt;
     private ReservationStatus status;
+    private String failureReason;  // CANCELED인 경우 실패 원인
 
     public static ReservationResponse from(Reservation reservation) {
         return ReservationResponse.builder()
@@ -27,6 +28,18 @@ public class ReservationResponse {
                 .userId(reservation.getUserId())
                 .createdAt(reservation.getCreatedAt())
                 .status(reservation.getStatus())
+                .failureReason(null)  // 기본값
+                .build();
+    }
+
+    public static ReservationResponse fromCanceled(Reservation reservation, String failureReason) {
+        return ReservationResponse.builder()
+                .reservationId(reservation.getId())
+                .concertId(reservation.getConcertId())
+                .userId(reservation.getUserId())
+                .createdAt(reservation.getCreatedAt())
+                .status(reservation.getStatus())
+                .failureReason(failureReason)
                 .build();
     }
 }
