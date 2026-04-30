@@ -22,6 +22,12 @@ public class ReservationTxService {
 
     @Transactional
     public Reservation createPending(ReservationRequest request) {
+        // Redis에서 이미 감소했으므로 DB도 동기화
+        Concert concert = concertRepository.findByIdForUpdate(request.getConcertId())
+                .orElseThrow(() -> new IllegalArgumentException("콘서트를 찾을 수 없습니다."));
+        concert.decreaseTicket();
+        concertRepository.save(concert);
+
         return reservationRepository.save(Reservation.create(request.getConcertId(), request.getUserId()));
     }
 

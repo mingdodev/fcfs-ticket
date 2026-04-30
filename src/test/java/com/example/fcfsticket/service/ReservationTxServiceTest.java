@@ -37,6 +37,7 @@ class ReservationTxServiceTest {
     @Test
     void 티켓이_있으면_pending_예약을_생성한다() {
         ReservationRequest request = new ReservationRequest(1L, "user123");
+        Concert concert = Concert.builder().id(1L).name("콘서트 A").remainingTickets(1000).build();
         Reservation savedReservation = Reservation.builder()
                 .id(10L)
                 .concertId(1L)
@@ -44,12 +45,15 @@ class ReservationTxServiceTest {
                 .status(ReservationStatus.PENDING)
                 .build();
 
+        given(concertRepository.findByIdForUpdate(1L)).willReturn(Optional.of(concert));
         given(reservationRepository.save(any(Reservation.class))).willReturn(savedReservation);
 
         Reservation result = reservationTxService.createPending(request);
 
         assertThat(result.getId()).isEqualTo(10L);
         assertThat(result.getStatus()).isEqualTo(ReservationStatus.PENDING);
+        assertThat(concert.getRemainingTickets()).isEqualTo(999);
+        verify(concertRepository).save(concert);
         verify(reservationRepository).save(any(Reservation.class));
     }
 
