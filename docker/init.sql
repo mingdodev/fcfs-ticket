@@ -14,6 +14,17 @@ CREATE TABLE IF NOT EXISTS reservations (
   FOREIGN KEY (concert_id) REFERENCES concerts(id)
 );
 
+CREATE TABLE IF NOT EXISTS reservation_compensation_states (
+  id BIGINT AUTO_INCREMENT PRIMARY KEY,
+  reservation_id BIGINT NOT NULL,
+  concert_id BIGINT NOT NULL,
+  status VARCHAR(30) NOT NULL DEFAULT 'PENDING',
+  retry_count INT NOT NULL DEFAULT 0,
+  created_at BIGINT NOT NULL,
+  UNIQUE KEY uk_reservation_id (reservation_id),
+  FOREIGN KEY (concert_id) REFERENCES concerts(id)
+);
+
 INSERT INTO concerts (id, name, remaining_tickets) VALUES
 (1, '매숑이 콘서트', 1000),
 (2, '매슝이 콘서트', 500),
