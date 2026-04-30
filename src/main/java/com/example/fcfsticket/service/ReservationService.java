@@ -1,11 +1,8 @@
 package com.example.fcfsticket.service;
 
-import com.example.fcfsticket.client.PaymentClient;
 import com.example.fcfsticket.domain.Reservation;
-import com.example.fcfsticket.domain.ReservationCompensationState;
 import com.example.fcfsticket.dto.ReservationRequest;
 import com.example.fcfsticket.exception.SoldOutException;
-import com.example.fcfsticket.repository.ReservationCompensationStateRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -17,11 +14,16 @@ public class ReservationService {
 
     private final TicketInventoryService ticketInventoryService;
     private final ReservationTxService reservationTxService;
-    private final PaymentClient paymentClient;
-    private final ReservationCompensationStateRepository compensationStateRepository;
+    private final PaymentProcessingService paymentProcessingService;
 
+    /**
+     * 예약 접수: Redis 선점 + DB PENDING 저장만 수행
+     * 결제는 백그라운드에서 비동기 처리
+     *
+     * @return PENDING 상태의 예약
+     */
     public Reservation reserve(ReservationRequest request) {
-        // 1. Redis에서 선착순 판정 (원자적: 중복 확인 + 재고 확인 + 감소 + 사용자 기록)
+        // 1. Redis Lua 스크립트: 선착순 선점 (원자적)
         long reserveResult = ticketInventoryService.reserveIfAvailable(
             request.getConcertId(),
             request.getUserId()
@@ -34,51 +36,15 @@ public class ReservationService {
             throw new SoldOutException("잔여 티켓이 없습니다.");
         }
 
-        // 2. DB에 예약 생성 (PENDING 상태)
+        // 2. DB PENDING 저장
         Reservation reservation = reservationTxService.createPending(request);
+        log.info("Reservation accepted: reservationId={}, concertId={}, userId={}",
+            reservation.getId(), request.getConcertId(), request.getUserId());
 
-        try {
-            // 3. 결제 요청
-            paymentClient.requestPayment(reservation.getConcertId(), reservation.getUserId());
-        } catch (Exception e) {
-            handleCompensation(reservation, request);
-            throw e;
-        }
+        // 3. 백그라운드에서 결제 + 상태 변경 처리
+        paymentProcessingService.processPaymentAsync(reservation.getId(), request);
 
-        // 4. 확정 (PENDING → CONFIRMED)
-        return reservationTxService.confirm(reservation.getId());
-    }
-
-    private void handleCompensation(Reservation reservation, ReservationRequest request) {
-        // 보상 트랜잭션 상태 저장: Redis 복구는 성공하면 기록, DB 취소 실패는 재시도 대상으로 표시
-        ReservationCompensationState compensationState = ReservationCompensationState.builder()
-            .reservationId(reservation.getId())
-            .concertId(request.getConcertId())
-            .status(ReservationCompensationState.CompensationStatus.PENDING)
-            .retryCount(0)
-            .createdAt(System.currentTimeMillis())
-            .build();
-
-        try {
-            // Redis 복구
-            ticketInventoryService.restoreTicket(request.getConcertId());
-            compensationState.markRedisSuccess();
-        } catch (Exception redisEx) {
-            log.error("Redis restoration failed: reservationId={}, reason={}", reservation.getId(), redisEx.getMessage());
-            compensationState.markDbFailed();
-            compensationStateRepository.save(compensationState);
-            return;
-        }
-
-        try {
-            // DB 취소
-            reservationTxService.cancel(reservation.getId(), request.getConcertId());
-            compensationState.markCompleted();
-        } catch (Exception dbEx) {
-            log.error("DB cancellation failed: reservationId={}, reason={}", reservation.getId(), dbEx.getMessage());
-            compensationState.markDbFailed();
-        }
-
-        compensationStateRepository.save(compensationState);
+        // 4. PENDING 상태로 즉시 반환 (202 Accepted)
+        return reservation;
     }
 }
