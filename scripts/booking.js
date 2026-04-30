@@ -108,33 +108,62 @@ export default function () {
     }
 
     // ========== 2단계: 최종 상태 조회 (GET) ==========
-    // 결제 처리를 위해 약간 대기 (백그라운드에서 처리 중)
-    sleep(0.5);
-
+    // 결제 처리 완료 대기: 폴링으로 PENDING이 아닐 때까지 확인
+    // 최대 10초 대기 (1 + 2 + 4초)
     let queryRes;
-    try {
-        queryRes = http.get(
-            `${BASE_URL}/reservations/${reservationId}`,
-            {
-                headers: { 'Content-Type': 'application/json' },
-                timeout: '150s',
-            }
-        );
+    let finalStatus;
+    const maxRetries = 3;
+    let attempts = 0;
+    let waitTime = 1; // 1초 시작
 
-        queryLatency.add(queryRes.timings.duration);
-    } catch (e) {
-        networkError.add(1);
-        queryTimeout.add(1);
-        querySystemErr.add(1);
-        console.log(`[조회] TIMEOUT/NETWORK VU=${__VU}: ${e}`);
-        return;
+    // PENDING이 아닐 때까지 폴링
+    while (attempts < maxRetries && (!finalStatus || finalStatus === 'PENDING')) {
+        sleep(waitTime);
+
+        try {
+            queryRes = http.get(
+                `${BASE_URL}/reservations/${reservationId}`,
+                {
+                    headers: { 'Content-Type': 'application/json' },
+                    timeout: '150s',
+                }
+            );
+
+            queryLatency.add(queryRes.timings.duration);
+        } catch (e) {
+            networkError.add(1);
+            queryTimeout.add(1);
+            querySystemErr.add(1);
+            console.log(`[조회] TIMEOUT/NETWORK VU=${__VU}: ${e}`);
+            return;
+        }
+
+        if (queryRes.status === 200) {
+            try {
+                const body = JSON.parse(queryRes.body);
+                finalStatus = body.status;
+
+                // PENDING이 아니면 루프 탈출
+                if (finalStatus !== 'PENDING') {
+                    break;
+                }
+            } catch (e) {
+                console.log(`[조회] JSON Parse Error: ${e}`);
+                break;
+            }
+        } else {
+            break;
+        }
+
+        attempts++;
+        waitTime *= 2;  // exponential backoff: 1 → 2 → 4
     }
 
+    // 최종 결과 처리
     if (queryRes.status === 200) {
         querySuccess.add(1);
         querySuccessLatency.add(queryRes.timings.duration);
 
-        // 최종 상태 분류
         try {
             const body = JSON.parse(queryRes.body);
             const status = body.status;
