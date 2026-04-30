@@ -51,10 +51,9 @@ resilience4j:
   retry:
     instances:
       payment:
-        max-attempts: 3
+        max-attempts: 5
         wait-duration: 1000  # 1초
-        interval-function: exponential  # exponential backoff
-        exponential-backoff-multiplier: 2.0
+        interval-function: linear
   circuitbreaker:
     instances:
       payment:
