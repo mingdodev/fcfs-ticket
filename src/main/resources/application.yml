@@ -47,7 +47,7 @@ resilience4j:
       payment:
         limit-for-period: 100
         limit-refresh-period: 1s
-        timeout-duration: 10s
+        timeout-duration: 30s
   retry:
     instances:
       payment:

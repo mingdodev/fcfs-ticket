@@ -71,22 +71,22 @@ public class PaymentClient {
                     .body(PaymentResponse.class);
 
             if (response == null || "FAIL".equals(response.status())) {
-                log.warn("Payment rejected: concertId={}, userId={}, payloadStatus={}",
+                log.warn("Payment rejected by server: concertId={}, userId={}, status={}",
                         concertId, userId, response == null ? "null" : response.status());
-                throw new PaymentFailedException();
+                throw new PaymentFailedException("Server rejected: " + (response == null ? "null" : response.status()));
             }
+            log.info("Payment accepted: concertId={}, userId={}", concertId, userId);
         } catch (RestClientResponseException e) {
-            log.warn("Payment server error: concertId={}, userId={}, status={}, body={}",
+            log.warn("Payment server HTTP error: concertId={}, userId={}, status={}, body={}",
                     concertId, userId, e.getStatusCode(), e.getResponseBodyAsString());
-            throw new PaymentFailedException();
+            throw new PaymentFailedException("HTTP " + e.getStatusCode().value());
         } catch (ResourceAccessException e) {
             Throwable cause = e.getCause();
-            log.warn("Payment request unavailable: concertId={}, userId={}, message={}, causeType={}, causeMessage={}",
+            log.warn("Payment network error: concertId={}, userId={}, cause={}, message={}",
                     concertId,
                     userId,
-                    e.getMessage(),
-                    cause == null ? "none" : cause.getClass().getSimpleName(),
-                    cause == null ? "none" : cause.getMessage());
+                    cause == null ? "unknown" : cause.getClass().getSimpleName(),
+                    cause == null ? e.getMessage() : cause.getMessage());
             throw new PaymentUnavailableException();
         }
     }
