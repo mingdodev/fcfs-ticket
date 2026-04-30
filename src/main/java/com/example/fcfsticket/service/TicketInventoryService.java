@@ -72,8 +72,6 @@ public class TicketInventoryService {
 
         if (result == ReservationResult.DUPLICATE) {
             log.info("Duplicate reservation attempt: concertId={}, userId={}", concertId, userId);
-        } else if (result == ReservationResult.SOLD_OUT) {
-            log.warn("Sold out: concertId={}", concertId);
         }
 
         return result;

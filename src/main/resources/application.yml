@@ -42,6 +42,12 @@ ticket:
     retry-interval-ms: 60000  # 1분
 
 resilience4j:
+  ratelimiter:
+    instances:
+      payment:
+        limit-for-period: 100
+        limit-refresh-period: 1s
+        timeout-duration: 10s
   retry:
     instances:
       payment:

@@ -4,7 +4,9 @@ import com.example.fcfsticket.client.PaymentClient;
 import com.example.fcfsticket.domain.ReservationCompensationState;
 import com.example.fcfsticket.dto.ReservationRequest;
 import com.example.fcfsticket.repository.ReservationCompensationStateRepository;
-import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
+import io.github.resilience4j.circuitbreaker.CircuitBreaker;
+import io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry;
+import io.github.resilience4j.ratelimiter.annotation.RateLimiter;
 import io.github.resilience4j.retry.annotation.Retry;
 import java.util.concurrent.CompletableFuture;
 import lombok.RequiredArgsConstructor;
@@ -20,6 +22,7 @@ public class PaymentProcessingService {
     private final ReservationTxService reservationTxService;
     private final TicketInventoryService ticketInventoryService;
     private final ReservationCompensationStateRepository compensationStateRepository;
+    private final CircuitBreakerRegistry circuitBreakerRegistry;
 
     /**
      * 백그라운드에서 비동기로 결제 + 상태 변경 처리
@@ -48,10 +51,13 @@ public class PaymentProcessingService {
      * - 최대 3회 재시도 (exponential backoff: 1초 후, 2초 후)
      * - 서킷 브레이커: 50% 실패율 또는 5초 이상 응답 시 차단
      */
+    @RateLimiter(name = "payment")
     @Retry(name = "payment", fallbackMethod = "paymentFallback")
-    @CircuitBreaker(name = "payment", fallbackMethod = "paymentFallback")
+    @io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker(name = "payment", fallbackMethod = "paymentFallback")
     public void processPaymentWithRetry(Long concertId, String userId) {
-        log.info("Requesting payment: concertId={}, userId={}", concertId, userId);
+        CircuitBreaker cb = circuitBreakerRegistry.circuitBreaker("payment");
+        log.info("Payment request: concertId={}, userId={}, cbState={}",
+            concertId, userId, cb.getState());
         paymentClient.requestPayment(concertId, userId);
     }
 
@@ -59,8 +65,9 @@ public class PaymentProcessingService {
      * 결제 실패 폴백 (서킷 브레이커 또는 모든 재시도 실패 시)
      */
     public void paymentFallback(Long concertId, String userId, Exception ex) {
-        log.warn("Payment fallback triggered: concertId={}, userId={}, reason={}",
-            concertId, userId, ex.getMessage());
+        CircuitBreaker cb = circuitBreakerRegistry.circuitBreaker("payment");
+        log.warn("Payment fallback: concertId={}, userId={}, cbState={}, reason={}",
+            concertId, userId, cb.getState(), ex.getMessage());
         throw new RuntimeException("Payment processing failed: " + ex.getMessage());
     }
 
