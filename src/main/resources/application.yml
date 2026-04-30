@@ -41,6 +41,25 @@ ticket:
   compensation:
     retry-interval-ms: 60000  # 1분
 
+resilience4j:
+  retry:
+    instances:
+      payment:
+        max-attempts: 3
+        wait-duration: 1000  # 1초
+        interval-function: exponential  # exponential backoff
+        exponential-backoff-multiplier: 2.0
+  circuitbreaker:
+    instances:
+      payment:
+        register-health-indicator: true
+        failure-rate-threshold: 50  # 50% 실패율
+        slow-call-rate-threshold: 50
+        slow-call-duration-threshold: 10000  # 10초 (타임아웃과 동일)
+        wait-duration-in-open-state: 30000  # 30초 후 half-open
+        permitted-number-of-calls-in-half-open-state: 3
+        automatic-transition-from-open-to-half-open-enabled: true
+
 logging:
   level:
     root: WARN
