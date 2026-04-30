@@ -21,6 +21,7 @@ CREATE TABLE IF NOT EXISTS reservation_compensation_states (
   status VARCHAR(30) NOT NULL DEFAULT 'PENDING',
   retry_count INT NOT NULL DEFAULT 0,
   created_at BIGINT NOT NULL,
+  failure_reason VARCHAR(50),
   UNIQUE KEY uk_reservation_id (reservation_id),
   FOREIGN KEY (concert_id) REFERENCES concerts(id)
 );
